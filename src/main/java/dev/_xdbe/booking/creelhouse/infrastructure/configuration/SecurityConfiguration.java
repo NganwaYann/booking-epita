@@ -25,29 +25,32 @@ public class SecurityConfiguration {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
-            .authorizeHttpRequests(auth -> auth
-                // Step 4a: add access control
-                // ...
-                // Step 4a: end
-                .anyRequest().permitAll()
-            )
-            // Step 4b: Add login form
-            // ...
-            // Step 4b: End of login form configuration
-            
-            .csrf((csrf) -> csrf
-                .ignoringRequestMatchers("/h2-console/**")
-            )
-            .headers(headers ->
-                headers.frameOptions(frameOptions ->
-                    frameOptions.disable()
-                )
-            )
-            .build();
+        .authorizeHttpRequests(auth -> auth
+            .requestMatchers("/dashboard").hasRole("ADMIN")
+            .anyRequest().permitAll()
+        )
+        .formLogin(withDefaults())
+        .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**"))
+        .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.disable()))
+        .build();
     }
 
-    // Step 3: add InMemoryUserDetailsManager
-    // ...
-    // Step 3: end
+    @Bean
+    public UserDetailsService userDetailsService() {
+
+        UserDetails admin = User.builder()
+            .username("admin")
+            .password("{bcrypt}$2a$10$gGPFhBZApLv4ypGPwX/s1OxN4B6hx7xtEtWNaFEi1von4W/c/usBC")
+            .roles("ADMIN")
+            .build();
+
+        UserDetails guest = User.builder()
+            .username("guest")
+            .password("{bcrypt}$2a$10$dH13mt4hjT2BvyLbPd7ehuhyCno5SzCK6yW/FKplSiqHyDmW9bF52")
+            .roles("GUEST")
+            .build();
+
+        return new InMemoryUserDetailsManager(admin, guest);
+    }
 
 }
