@@ -1,4 +1,5 @@
 name: security-pr
+
 on:
   pull_request:
 
@@ -8,15 +9,20 @@ permissions:
   contents: read
 
 jobs:
-  # Job #1 : Analyse des dépendances différentielle
+
   dependencies-analysis:
+    name: dependencies-analysis
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code (after PR)
+
+      - name: Checkout full history (after PR)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Run OSV Scanner after PR
-        uses: google/osv-scanner-action/osv-scanner-action@7222d1c7ee4f96d71d883e0d3c603f1e1705eca9 # v2.3.5
+        uses: google/osv-scanner-action/osv-scanner-action@v2.3.5
         with:
           scan-args: |-
             --format sarif
@@ -24,12 +30,15 @@ jobs:
             ./
         continue-on-error: true
 
+      - name: Fetch all branches
+        run: git fetch --all
+
       - name: Checkout baseline commit (before PR)
         run: |
           git checkout ${{ github.event.pull_request.base.sha }}
 
       - name: Run OSV Scanner before PR
-        uses: google/osv-scanner-action/osv-scanner-action@7222d1c7ee4f96d71d883e0d3c603f1e1705eca9 # v2.3.5
+        uses: google/osv-scanner-action/osv-scanner-action@v2.3.5
         with:
           scan-args: |-
             --format sarif
@@ -38,28 +47,32 @@ jobs:
         continue-on-error: true
 
       - name: Compare analysis (differential report)
-        uses: google/osv-scanner-action/osv-reporter-action@7222d1c7ee4f96d71d883e0d3c603f1e1705eca9 # v2.3.5
+        uses: google/osv-scanner-action/osv-reporter-action@v2.3.5
         with:
           scan-args: |-
-            --new BeforePR.sarif
-            --old AfterPR.sarif
+            --new AfterPR.sarif
+            --old BeforePR.sarif
             --output DifferentialDependencies.sarif
             --format sarif
         continue-on-error: true
 
-      - name: Save differential report as artifact
+      - name: Upload dependency diff report
         uses: actions/upload-artifact@v4
         with:
           name: DifferentialDependencies
           path: DifferentialDependencies.sarif
 
-  # Job #2 : Analyse du code source différentielle
+
   source-code-analysis:
+    name: source-code-analysis
     runs-on: ubuntu-latest
+
     container:
-      image: returntocorp/semgrep@sha256:98483a9a30707d88f8826b9b1995e53a83a01016e8cd325119b0d8054a481269
+      image: returntocorp/semgrep:latest
+
     steps:
-      - name: Checkout code
+
+      - name: Checkout full history
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -74,7 +87,7 @@ jobs:
             ./
         continue-on-error: true
 
-      - name: Save differential report as artifact
+      - name: Upload Semgrep diff report
         uses: actions/upload-artifact@v4
         with:
           name: SourceCodeDifferential
