@@ -16,8 +16,10 @@ jobs:
 
     steps:
 
-      - name: Checkout code (after PR)
+      - name: Checkout full history (after PR)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Run OSV Scanner after PR
         uses: google/osv-scanner-action/osv-scanner-action@v2.3.5
@@ -28,11 +30,12 @@ jobs:
             ./
         continue-on-error: true
 
+      - name: Fetch all branches
+        run: git fetch --all
 
       - name: Checkout baseline commit (before PR)
         run: |
           git checkout ${{ github.event.pull_request.base.sha }}
-
 
       - name: Run OSV Scanner before PR
         uses: google/osv-scanner-action/osv-scanner-action@v2.3.5
@@ -42,7 +45,6 @@ jobs:
             --output BeforePR.sarif
             ./
         continue-on-error: true
-
 
       - name: Compare analysis (differential report)
         uses: google/osv-scanner-action/osv-reporter-action@v2.3.5
@@ -54,13 +56,11 @@ jobs:
             --format sarif
         continue-on-error: true
 
-
-      - name: Save differential report as artifact
+      - name: Upload dependency diff report
         uses: actions/upload-artifact@v4
         with:
           name: DifferentialDependencies
           path: DifferentialDependencies.sarif
-
 
 
   source-code-analysis:
@@ -72,11 +72,10 @@ jobs:
 
     steps:
 
-      - name: Checkout code
+      - name: Checkout full history
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
 
       - name: Run Semgrep differential analysis
         run: |
@@ -88,8 +87,7 @@ jobs:
             ./
         continue-on-error: true
 
-
-      - name: Save differential report as artifact
+      - name: Upload Semgrep diff report
         uses: actions/upload-artifact@v4
         with:
           name: SourceCodeDifferential
