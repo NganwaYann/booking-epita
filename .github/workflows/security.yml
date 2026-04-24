@@ -1,0 +1,50 @@
+name: security
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'  # Tous les jours à minuit
+
+permissions:
+  actions: read
+  security-events: write
+  contents: read
+
+jobs:
+  # Job #1 : Analyse des dépendances avec OSV Scanner
+  dependencies-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run OSV Scanner
+        uses: google/osv-scanner-action/osv-scanner-action@7222d1c7ee4f96d71d883e0d3c603f1e1705eca9 # v2.3.5
+        with:
+          scan-args: |-
+            --format sarif
+            --output DependenciesAnalysisFull.sarif
+            ./
+        continue-on-error: true
+
+      - name: Upload SARIF report to Security Dashboard
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: DependenciesAnalysisFull.sarif
+
+  # Job #2 : Analyse du code source avec Semgrep
+  source-code-analysis:
+    runs-on: ubuntu-latest
+    container:
+      image: returntocorp/semgrep@sha256:98483a9a30707d88f8826b9b1995e53a83a01016e8cd325119b0d8054a481269
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Semgrep analysis
+        run: semgrep --config .semgrep --sarif --output SourceCodeAnalysis.sarif ./
+        continue-on-error: true
+
+      - name: Upload SARIF report to Security Dashboard
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: SourceCodeAnalysis.sarif

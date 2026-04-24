@@ -1,0 +1,14 @@
+rules:
+  - id: hardcoded-password
+    patterns:
+      - pattern: password = "..."
+    message: "Mot de passe codé en dur détecté !"
+    languages: [python, javascript, typescript]
+    severity: ERROR
+
+  - id: hardcoded-secret
+    patterns:
+      - pattern: secret = "..."
+    message: "Secret codé en dur détecté !"
+    languages: [python, javascript, typescript]
+    severity: ERROR
